@@ -1,32 +1,33 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Artist } from '../entities';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class ArtistsService {
-  constructor(
-    @InjectRepository(Artist)
-    private artistsRepository: Repository<Artist>,
-  ) {}
+  constructor(private db: DatabaseService) {}
 
   async findAll(limit?: number) {
-    const query = this.artistsRepository
-      .createQueryBuilder('artist')
-      .orderBy('artist.name', 'ASC');
-
-    if (limit) {
-      query.take(limit);
-    }
-
-    return query.getMany();
+    const { Artist } = this.db.models as any;
+    return Artist.findAll({
+      order: [['name', 'ASC']],
+      limit: limit ?? undefined,
+    });
   }
 
   async findOne(id: string) {
-    const artist = await this.artistsRepository.findOne({
+    const { Artist, Album, Song } = this.db.models as any;
+
+    const artist = await Artist.findOne({
       where: { id },
-      relations: ['albums', 'albums.songs', 'songs'],
+      include: [
+        {
+          model: Album,
+          as: 'albums',
+          include: [{ model: Song, as: 'songs' }],
+        },
+        { model: Song, as: 'songs' },
+      ],
     });
+
     if (!artist) {
       throw new NotFoundException('Artist not found');
     }

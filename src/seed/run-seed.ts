@@ -1,33 +1,31 @@
-import { DataSource } from 'typeorm';
+import { Sequelize } from 'sequelize';
 import { seed } from './seed';
-import {
-  User,
-  Artist,
-  Album,
-  Song,
-  Playlist,
-  PlaylistSong,
-  LikedSong,
-} from '../entities';
+import { initModels } from '../models';
 
 async function run() {
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    username: process.env.DB_USER || 'spotify',
-    password: process.env.DB_PASSWORD || 'spotify_secret',
-    database: process.env.DB_NAME || 'spotify_clone',
-    entities: [User, Artist, Album, Song, Playlist, PlaylistSong, LikedSong],
-    synchronize: true,
-  });
+  const sequelize = new Sequelize(
+    process.env.DB_NAME || 'spotify_clone',
+    process.env.DB_USER || 'spotify',
+    process.env.DB_PASSWORD || 'spotify_secret',
+    {
+      // `sequelize-cli` + runtime uses `dialect: 'postgres'` for Postgres.
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432', 10),
+      dialect: 'postgres',
+      logging: false,
+      define: {
+        underscored: false,
+      },
+    },
+  );
 
-  await dataSource.initialize();
+  const models = initModels(sequelize);
+  await sequelize.authenticate();
   console.log('Connected to database');
 
-  await seed(dataSource);
+  await seed(models as any);
 
-  await dataSource.destroy();
+  await sequelize.close();
   console.log('Seed complete!');
 }
 

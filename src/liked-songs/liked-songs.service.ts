@@ -1,41 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { LikedSong } from '../entities';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class LikedSongsService {
-  constructor(
-    @InjectRepository(LikedSong)
-    private likedSongsRepository: Repository<LikedSong>,
-  ) {}
+  constructor(private db: DatabaseService) {}
 
   async findByUser(userId: string) {
-    const liked = await this.likedSongsRepository.find({
+    const { LikedSong, Song, Artist, Album } = this.db.models as any;
+    const liked = await LikedSong.findAll({
       where: { userId },
-      relations: ['song', 'song.artist', 'song.album'],
-      order: { likedAt: 'DESC' },
+      include: [
+        {
+          model: Song,
+          as: 'song',
+          include: [
+            { model: Artist, as: 'artist' },
+            { model: Album, as: 'album' },
+          ],
+        },
+      ],
+      order: [['likedAt', 'DESC']],
     });
-    return liked.map((ls) => ({
-      ...ls.song,
+    return liked.map((ls: any) => ({
+      ...(ls.song?.toJSON?.() ?? ls.song),
       likedAt: ls.likedAt,
     }));
   }
 
   async like(userId: string, songId: string) {
-    const existing = await this.likedSongsRepository.findOne({
-      where: { userId, songId },
-    });
+    const { LikedSong } = this.db.models as any;
+    const existing = await LikedSong.findOne({ where: { userId, songId } });
     if (existing) {
       return { liked: true };
     }
-    const likedSong = this.likedSongsRepository.create({ userId, songId });
-    await this.likedSongsRepository.save(likedSong);
+    await LikedSong.create({ userId, songId });
     return { liked: true };
   }
 
   async unlike(userId: string, songId: string) {
-    await this.likedSongsRepository.delete({ userId, songId });
+    const { LikedSong } = this.db.models as any;
+    await LikedSong.destroy({ where: { userId, songId } });
     return { liked: false };
   }
 }

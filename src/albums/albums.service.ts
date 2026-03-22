@@ -1,39 +1,38 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Album } from '../entities';
+import { DatabaseService } from '../database/database.service';
 
 @Injectable()
 export class AlbumsService {
-  constructor(
-    @InjectRepository(Album)
-    private albumsRepository: Repository<Album>,
-  ) {}
+  constructor(private db: DatabaseService) {}
 
   async findAll(limit?: number) {
-    const query = this.albumsRepository
-      .createQueryBuilder('album')
-      .leftJoinAndSelect('album.artist', 'artist')
-      .orderBy('album.title', 'ASC');
-
-    if (limit) {
-      query.take(limit);
-    }
-
-    return query.getMany();
+    const { Album, Artist } = this.db.models as any;
+    return Album.findAll({
+      include: [{ model: Artist, as: 'artist' }],
+      order: [['title', 'ASC']],
+      limit: limit ?? undefined,
+    });
   }
 
   async findOne(id: string) {
-    const album = await this.albumsRepository.findOne({
+    const { Album, Artist, Song } = this.db.models as any;
+
+    const album = await Album.findOne({
       where: { id },
-      relations: ['artist', 'songs', 'songs.artist'],
+      include: [
+        { model: Artist, as: 'artist' },
+        { model: Song, as: 'songs', include: [{ model: Artist, as: 'artist' }] },
+      ],
     });
+
     if (!album) {
       throw new NotFoundException('Album not found');
     }
     // Sort songs by track number
-    if (album.songs) {
-      album.songs.sort((a, b) => (a.trackNumber || 0) - (b.trackNumber || 0));
+    if ((album as any).songs) {
+      (album as any).songs.sort(
+        (a: any, b: any) => (a.trackNumber || 0) - (b.trackNumber || 0),
+      );
     }
     return album;
   }
