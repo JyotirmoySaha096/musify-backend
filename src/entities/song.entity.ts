@@ -22,8 +22,8 @@ export class Song {
   @Column({ name: 'duration_seconds' })
   durationSeconds: number;
 
-  @Column({ name: 'file_path' })
-  filePath: string;
+  @Column({ name: 'audio_url' })
+  audioUrl: string;
 
   @Column({ name: 'track_number', nullable: true })
   trackNumber: number;
