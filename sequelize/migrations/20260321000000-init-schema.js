@@ -94,8 +94,15 @@ module.exports = {
     `);
   },
 
-  async down() {
-    // Intentionally no-op to avoid dropping existing production/dev data.
+  async down(queryInterface) {
+    const sequelize = queryInterface.sequelize;
+    await sequelize.query('DROP TABLE IF EXISTS liked_songs CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS playlist_songs CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS playlists CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS songs CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS albums CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS artists CASCADE;');
+    await sequelize.query('DROP TABLE IF EXISTS users CASCADE;');
   },
 };
 
